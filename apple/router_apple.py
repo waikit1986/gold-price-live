@@ -63,7 +63,6 @@ async def auth_apple(request: AppleAuthRequest, db: Session = Depends(get_db)):
             refresh_token_expires_at=refresh_token_expires_at,
             user_id=str(user.id),
             email=user.email,
-            username=user.username,
             is_verified=user.email_verified
         )
 

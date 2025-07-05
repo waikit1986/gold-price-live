@@ -16,7 +16,6 @@ class AppleSignInResponse(BaseModel):
     refresh_token_expires_at: float
     user_id: str
     email: str | None
-    username: str | None
     is_verified: bool
     
 class AccessTokenResponse(BaseModel):
