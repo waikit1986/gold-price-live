@@ -1,6 +1,6 @@
 import pandas as pd
 
-def add_stochastic(df: pd.DataFrame, k_period: int = 14, d_period: int = 3) -> pd.DataFrame:
+def add_stochastic(df: pd.DataFrame, k_period: int, d_period: int) -> pd.DataFrame:
     """
     Add Stochastic Oscillator (%K and %D) to the DataFrame.
 

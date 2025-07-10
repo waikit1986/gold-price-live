@@ -1,6 +1,6 @@
 import pandas as pd
 
-def add_cci(df: pd.DataFrame, period: int = 20) -> pd.DataFrame:
+def add_cci(df: pd.DataFrame, period: int) -> pd.DataFrame:
     """
     Add Commodity Channel Index (CCI) to the DataFrame.
 

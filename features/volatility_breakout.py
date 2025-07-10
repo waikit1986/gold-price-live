@@ -1,6 +1,6 @@
 import pandas as pd
 
-def add_volatility_breakout(df: pd.DataFrame, atr_period: int = 14, multiplier: float = 1.5) -> pd.DataFrame:
+def add_volatility_breakout(df: pd.DataFrame, atr_period: int, multiplier: float) -> pd.DataFrame:
     """
     Add a breakout signal when the price moves beyond a multiple of ATR from the previous close.
 

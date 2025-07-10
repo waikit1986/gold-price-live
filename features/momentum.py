@@ -1,6 +1,6 @@
 import pandas as pd
 
-def add_momentum(df: pd.DataFrame, period: int = 10) -> pd.DataFrame:
+def add_momentum(df: pd.DataFrame, period: int) -> pd.DataFrame:
     """
     Add Momentum indicator to the DataFrame.
 

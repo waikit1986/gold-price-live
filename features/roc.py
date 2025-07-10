@@ -1,6 +1,6 @@
 import pandas as pd
 
-def add_roc(df: pd.DataFrame, period: int = 12) -> pd.DataFrame:
+def add_roc(df: pd.DataFrame, period: int) -> pd.DataFrame:
     """
     Add Rate of Change (ROC) to the DataFrame.
 

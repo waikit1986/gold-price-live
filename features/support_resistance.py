@@ -1,6 +1,6 @@
 import pandas as pd
 
-def add_support_resistance(df: pd.DataFrame, window: int = 20) -> pd.DataFrame:
+def add_support_resistance(df: pd.DataFrame, window: int) -> pd.DataFrame:
     """
     Add recent support and resistance levels using rolling lows and highs.
 

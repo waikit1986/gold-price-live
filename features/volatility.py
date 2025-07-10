@@ -1,6 +1,6 @@
 import pandas as pd
 
-def add_volatility(df: pd.DataFrame, window: int = 14) -> pd.DataFrame:
+def add_volatility(df: pd.DataFrame, window: int) -> pd.DataFrame:
     """
     Add rolling volatility (standard deviation) to the DataFrame.
 

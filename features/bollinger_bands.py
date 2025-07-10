@@ -1,6 +1,6 @@
 import pandas as pd
 
-def add_bollinger_bands(df: pd.DataFrame, window: int = 20, num_std: float = 2.0) -> pd.DataFrame:
+def add_bollinger_bands(df: pd.DataFrame, window: int, num_std: float) -> pd.DataFrame:
     """
     Add Bollinger Bands to the DataFrame.
 

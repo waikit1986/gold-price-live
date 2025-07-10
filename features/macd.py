@@ -1,9 +1,9 @@
 import pandas as pd
 
 def add_macd(df: pd.DataFrame,
-             fast_period: int = 12,
-             slow_period: int = 26,
-             signal_period: int = 9) -> pd.DataFrame:
+             fast_period: int,
+             slow_period: int,
+             signal_period: int) -> pd.DataFrame:
     """
     Add MACD, MACD Signal Line, and MACD Histogram to the DataFrame.
 

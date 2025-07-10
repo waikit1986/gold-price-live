@@ -1,6 +1,6 @@
 import pandas as pd
 
-def add_rsi(df: pd.DataFrame, window: int = 14) -> pd.DataFrame:
+def add_rsi(df: pd.DataFrame, window: int) -> pd.DataFrame:
     """
     Add Relative Strength Index (RSI) to the DataFrame.
 
@@ -12,8 +12,8 @@ def add_rsi(df: pd.DataFrame, window: int = 14) -> pd.DataFrame:
         pd.DataFrame: DataFrame with 'rsi' column added.
     """
     delta = df['Close'].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean()
+    gain = delta.where(delta > 0, 0).rolling(window=window).mean()
+    loss = -delta.where(delta < 0, 0).rolling(window=window).mean()
 
     rs = gain / loss
     df['rsi'] = 100 - (100 / (1 + rs))
