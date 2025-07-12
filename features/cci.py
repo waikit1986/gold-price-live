@@ -13,6 +13,6 @@ def add_cci(df: pd.DataFrame, period: int) -> pd.DataFrame:
     """
     tp = (df['High'] + df['Low'] + df['Close']) / 3  # Typical Price
     ma = tp.rolling(window=period).mean()
-    md = tp.rolling(window=period).apply(lambda x: pd.Series(x).mad())
+    md = tp.rolling(window=period).apply(lambda x: (abs(x - x.mean())).mean(), raw=False)
     df['cci'] = (tp - ma) / (0.015 * md)
     return df

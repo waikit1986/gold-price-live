@@ -2,33 +2,41 @@ import yfinance as yf
 import os
 
 tickers = {
-    "GC=F": "gold_futures_daily.csv",
-    "IAU": "iau_daily.csv",
-    "SGOL": "sgol_daily.csv",
-    "PHYS": "phys_daily.csv",
-    "GDX": "gdx_daily.csv",
-    "GDXJ": "gdxj_daily.csv",
-    "SLV": "slv_daily.csv",
-    "PPLT": "pplt_daily.csv",
-    "^TNX": "ten_year_yield_daily.csv",
-    "DX-Y.NYB": "dxy_daily.csv",
-    "^GSPC": "sp500_daily.csv",
-    "^VIX": "vix_daily.csv",
-    "CL=F": "crude_oil_daily.csv",
-    "BTC-USD": "btc_usd_daily.csv",
-    "USDCNY=X": "usdcny_daily.csv"
+    "GC=F": "gold_futures_1H.csv",              # Gold Futures
+    "SI=F": "silver_futures_1H.csv",            # Silver Futures
+    "IAU": "iau_1H.csv",                        # iShares Gold ETF
+    "GLD": "gld_1H.csv",                        # SPDR Gold ETF
+    "GDX": "gdx_1H.csv",                        # Gold Miners ETF
+    "NEM": "newmont_1H.csv",                    # Newmont Corporation
+
+    "^TNX": "ten_year_yield_1H.csv",            # 10-Year Treasury Yield
+    "^IRX": "three_month_yield_1H.csv",         # 13-Week Treasury Yield
+    "TIP": "tip_1H.csv",                        # TIPS ETF
+
+    "DX-Y.NYB": "dxy_1H.csv",                   # US Dollar Index
+    "EURUSD=X": "eur_usd_1H.csv",               # EUR/USD FX Pair
+    "USDCNY=X": "usdcny_1H.csv",                # USD/CNY FX Pair
+
+    "^GSPC": "sp500_1H.csv",                    # S&P 500 Index
+    "^IXIC": "nasdaq_1H.csv",                   # Nasdaq Index
+    "SPY": "spy_1H.csv",                        # S&P 500 ETF
+    "XLF": "xlf_1H.csv",                        # Financial Sector ETF
+
+    "^VIX": "vix_1H.csv",                       # Volatility Index
+    "CL=F": "crude_oil_1H.csv",                 # Crude Oil Futures
+    "HG=F": "copper_futures_1H.csv",            # Copper Futures
 }
 
 def download_all():
     os.makedirs("data", exist_ok=True)
     for symbol, filename in tickers.items():
         try:
-            print(f"📈 Fetching {symbol} (daily, max)...")
-            df = yf.download(symbol, period="max", interval="1d", auto_adjust=True, progress=False)
+            print(f"📈 Fetching {symbol} (1H, max)...")
+            df = yf.download(symbol, period="max", interval="1h", auto_adjust=True, progress=False)
             if df.empty:
                 print(f"⚠️ No data for {symbol}")
             else:
-                full_path = os.path.join("data", filename)
+                full_path = os.path.join("data/1H", filename)
                 df.to_csv(full_path)
                 print(f"✅ Saved: {filename} ({len(df)} rows)")
         except Exception as e:
