@@ -1,5 +1,9 @@
 from fastapi import FastAPI
+
 from db.database import Base, engine
+from currencies import models_currencies
+from user import models_user
+import indicators.models_features
 from user.router_user import router as user_router
 from apple.router_apple import router as apple_router
 
