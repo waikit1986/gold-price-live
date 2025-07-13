@@ -20,6 +20,7 @@ indicator_model_map = {
     "CNY": IndicatorFeatureCny,
 }
 
+
 def fetch_price_data(session: Session, table_model, timeframe: str) -> pd.DataFrame:
     rows = session.query(table_model).order_by(table_model.timestamp).all()
     df = pd.DataFrame([{"timestamp": r.timestamp, "price": r.price} for r in rows])
