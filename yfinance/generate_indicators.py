@@ -9,30 +9,66 @@ from sqlalchemy.orm import Session
 from db.database import SessionLocal
 from indicators.calculator import compute_indicators
 
+# database models
 from models_external_symbols import (
     GLD, GCF, IAU, SIF, PPLT, PALL,
     DXY, TNX, TIP, CLF, VIX, GSPC
 )
 
+# indicator models
 from indicators.models_features import (
-    IndicatorFeatureGLD, IndicatorFeatureGCF, IndicatorFeatureIAU,
-    IndicatorFeatureSIF, IndicatorFeaturePPLT, IndicatorFeaturePALL,
-    IndicatorFeatureDXY, IndicatorFeatureTNX, IndicatorFeatureTIP,
-    IndicatorFeatureCLF, IndicatorFeatureVIX, IndicatorFeatureGSPC
+    IndicatorFeatureGCF_1D,
+    IndicatorFeatureIAU_1D,
+    IndicatorFeaturePALL_1D,
+    IndicatorFeaturePPLT_1D,
+    IndicatorFeatureBrentCrude_1D,
+    IndicatorFeatureCNY_1D,
+    IndicatorFeatureEUR_1D,
+    IndicatorFeatureJPY_1D,
+    IndicatorFeatureXAG_1D,
+    IndicatorFeatureXAU_1D,
+    IndicatorFeatureXPD_1D,
+    IndicatorFeatureXPT_1D,
+    IndicatorFeatureCLF_1D,
+    IndicatorFeatureDXY_1D,
+    IndicatorFeatureGLD_1D,
+    IndicatorFeatureGSPC_1D,
+    IndicatorFeatureTIP_1D,
+    IndicatorFeatureTNX_1D,
+    IndicatorFeatureVIX_1D,
+    IndicatorFeatureSIF_1D,
 )
 
 # Map price & indicator models
 price_table_map = {
-    "GLD": GLD, "GCF": GCF, "IAU": IAU, "SIF": SIF,
-    "PPLT": PPLT, "PALL": PALL, "DXY": DXY, "TNX": TNX,
-    "TIP": TIP, "CLF": CLF, "VIX": VIX, "GSPC": GSPC,
+    "GLD_1D": GLD, "GCF_1D": GCF, "IAU_1D": IAU, "SIF_1D": SIF,
+    "PPLT_1D": PPLT, "PALL_1D": PALL, "DXY_1D": DXY, "TNX_1D": TNX,
+    "TIP_1D": TIP, "CLF_1D": CLF, "VIX_1D": VIX, "GSPC_1D": GSPC,
 }
 
 indicator_model_map = {
-    "GLD": IndicatorFeatureGLD, "GCF": IndicatorFeatureGCF, "IAU": IndicatorFeatureIAU,
-    "SIF": IndicatorFeatureSIF, "PPLT": IndicatorFeaturePPLT, "PALL": IndicatorFeaturePALL,
-    "DXY": IndicatorFeatureDXY, "TNX": IndicatorFeatureTNX, "TIP": IndicatorFeatureTIP,
-    "CLF": IndicatorFeatureCLF, "VIX": IndicatorFeatureVIX, "GSPC": IndicatorFeatureGSPC,
+"GLD_1D": IndicatorFeatureGLD_1D,
+"GCF_1D": IndicatorFeatureGCF_1D,
+"IAU_1D": IndicatorFeatureIAU_1D,
+"SIF_1D": IndicatorFeatureSIF_1D,
+"PPLT_1D": IndicatorFeaturePPLT_1D,
+"PALL_1D": IndicatorFeaturePALL_1D,
+"BrentCrude_1D": IndicatorFeatureBrentCrude_1D,
+"CNY_1D": IndicatorFeatureCNY_1D,
+"EUR_1D": IndicatorFeatureEUR_1D,
+"JPY_1D": IndicatorFeatureJPY_1D,
+"XAG_1D": IndicatorFeatureXAG_1D,
+"XAU_1D": IndicatorFeatureXAU_1D,
+"XPD_1D": IndicatorFeatureXPD_1D,
+"XPT_1D": IndicatorFeatureXPT_1D,
+"CLF_1D": IndicatorFeatureCLF_1D,
+"DXY_1D": IndicatorFeatureDXY_1D,
+"GLD_1D": IndicatorFeatureGLD_1D,
+"GSPC_1D": IndicatorFeatureGSPC_1D,
+"TIP_1D": IndicatorFeatureTIP_1D,
+"TNX_1D": IndicatorFeatureTNX_1D,
+"VIX_1D": IndicatorFeatureVIX_1D,
+"SIF_1D": IndicatorFeatureSIF_1D,
 }
 
 

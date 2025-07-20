@@ -1,5 +1,7 @@
 from metalpriceapi.client import Client
 import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from dotenv import load_dotenv
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session

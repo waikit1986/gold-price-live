@@ -1,28 +1,32 @@
 import sys
 import os
-from typing import Any
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import datetime
-import json
 import re
+import json
+import asyncio
+import datetime
+from typing import Any
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
-from sqlalchemy import Date
-from openai import AsyncOpenAI
-import asyncio
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import and_
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+from openai import AsyncOpenAI
 from db.database import SessionLocal
-from currencies.models_currencies import Xau, Xag, Xpd, Xpt
-from ai.models_ai import AiAnalysis
+from ai.models_ai import AiAnalysis1H, AiAnalysis1D
 from ai.schema_ai import AiResponse
+from news.functions_news import get_latest_news_titles_and_summaries
 from indicators.models_features import (
-    IndicatorFeatureGLD, IndicatorFeatureGCF, IndicatorFeatureIAU,
-    IndicatorFeatureSIF, IndicatorFeaturePPLT, IndicatorFeaturePALL,
-    IndicatorFeatureDXY, IndicatorFeatureTNX, IndicatorFeatureTIP,
-    IndicatorFeatureCLF, IndicatorFeatureVIX, IndicatorFeatureGSPC
+    IndicatorFeatureGLD_1H, IndicatorFeatureGCF_1H, IndicatorFeatureIAU_1H,
+    IndicatorFeatureSIF_1H, IndicatorFeaturePPLT_1H, IndicatorFeaturePALL_1H,
+    IndicatorFeatureDXY_1H, IndicatorFeatureTNX_1H, IndicatorFeatureTIP_1H,
+    IndicatorFeatureCLF_1H, IndicatorFeatureVIX_1H, IndicatorFeatureGSPC_1H,
+    IndicatorFeatureGLD_1D, IndicatorFeatureGCF_1D, IndicatorFeatureIAU_1D,
+    IndicatorFeatureSIF_1D, IndicatorFeaturePPLT_1D, IndicatorFeaturePALL_1D,
+    IndicatorFeatureDXY_1D, IndicatorFeatureTNX_1D, IndicatorFeatureTIP_1D,
+    IndicatorFeatureCLF_1D, IndicatorFeatureVIX_1D, IndicatorFeatureGSPC_1D
 )
 
-# Load .env
 load_dotenv()
 
 client = AsyncOpenAI(
@@ -30,120 +34,125 @@ client = AsyncOpenAI(
     base_url="https://api.deepseek.com"
 )
 
-indicator_model_map = {
-    "GLD": IndicatorFeatureGLD,
-    "GCF": IndicatorFeatureGCF,
-    "IAU": IndicatorFeatureIAU,
-    "SIF": IndicatorFeatureSIF,
-    "PPLT": IndicatorFeaturePPLT,
-    "PALL": IndicatorFeaturePALL,
-    "DXY": IndicatorFeatureDXY,
-    "TNX": IndicatorFeatureTNX,
-    "TIP": IndicatorFeatureTIP,
-    "CLF": IndicatorFeatureCLF,
-    "VIX": IndicatorFeatureVIX,
-    "GSPC": IndicatorFeatureGSPC,
-}
-
 correlated_symbols = [
     "GCF", "IAU", "SIF", "PPLT", "PALL",
     "DXY", "TNX", "TIP", "CLF", "VIX", "GSPC"
 ]
 
-def fetch_historical_indicators(session: Session, model, date: datetime.date, history_days: int):
-    from sqlalchemy import and_
-    start_date = date - datetime.timedelta(days=history_days - 1)
+def get_indicator_model_map(duration: str):
+    is_hourly = duration == "1H"
+    return {
+        "GLD": IndicatorFeatureGLD_1H if is_hourly else IndicatorFeatureGLD_1D,
+        "GCF": IndicatorFeatureGCF_1H if is_hourly else IndicatorFeatureGCF_1D,
+        "IAU": IndicatorFeatureIAU_1H if is_hourly else IndicatorFeatureIAU_1D,
+        "SIF": IndicatorFeatureSIF_1H if is_hourly else IndicatorFeatureSIF_1D,
+        "PPLT": IndicatorFeaturePPLT_1H if is_hourly else IndicatorFeaturePPLT_1D,
+        "PALL": IndicatorFeaturePALL_1H if is_hourly else IndicatorFeaturePALL_1D,
+        "DXY": IndicatorFeatureDXY_1H if is_hourly else IndicatorFeatureDXY_1D,
+        "TNX": IndicatorFeatureTNX_1H if is_hourly else IndicatorFeatureTNX_1D,
+        "TIP": IndicatorFeatureTIP_1H if is_hourly else IndicatorFeatureTIP_1D,
+        "CLF": IndicatorFeatureCLF_1H if is_hourly else IndicatorFeatureCLF_1D,
+        "VIX": IndicatorFeatureVIX_1H if is_hourly else IndicatorFeatureVIX_1D,
+        "GSPC": IndicatorFeatureGSPC_1H if is_hourly else IndicatorFeatureGSPC_1D,
+    }
 
-    rows = session.query(model).filter(
-        and_(
-            model.date >= start_date,
-            model.date <= date
-        )
-    ).all()
-
-    by_date = {}
-    for row in rows:
-        d = row.date.isoformat()
-        if d not in by_date:
-            by_date[d] = {"price": row.price}
-        by_date[d][row.indicator] = row.value
-
-    return by_date
+def fetch_historical_indicators(session: Session, model, dt_obj: datetime.datetime, history: int, duration: str):
+    if duration == "1H":
+        start_dt = dt_obj - datetime.timedelta(hours=history - 1)
+        rows = session.query(model).filter(
+            and_(model.timestamp >= start_dt, model.timestamp <= dt_obj)
+        ).all()
+        by_time = {}
+        for row in rows:
+            key = row.timestamp.strftime("%Y-%m-%d %H:%M")
+            if key not in by_time:
+                by_time[key] = {"price": row.price}
+            by_time[key][row.indicator] = row.value
+    else:
+        start_date = dt_obj.date() - datetime.timedelta(days=history - 1)
+        rows = session.query(model).filter(
+            and_(model.date >= start_date, model.date <= dt_obj.date())
+        ).all()
+        by_time = {}
+        for row in rows:
+            key = row.date.isoformat()
+            if key not in by_time:
+                by_time[key] = {"price": row.price}
+            by_time[key][row.indicator] = row.value
+    return by_time
 
 async def format_section(symbol: str, history_data: dict) -> str:
     lines = [f"### {symbol}"]
-    for date_str in sorted(history_data.keys()):
-        day = history_data[date_str]
-        price = day.get("price", "N/A")
-        lines.append(f"{date_str}  |  Price: {round(price, 2) if price else 'N/A'}")
-        for k, v in sorted(day.items()):
+    for time_key in sorted(history_data.keys()):
+        data = history_data[time_key]
+        price = data.get("price", "N/A")
+        lines.append(f"{time_key}  |  Price: {round(price, 2) if price else 'N/A'}")
+        for k, v in sorted(data.items()):
             if k == "price":
                 continue
             lines.append(f"  - {k}: {round(v, 2)}")
         lines.append("")
     return "\n".join(lines)
 
-async def generate_prompt(target_symbol: str, date: str, duration: str = "1D", history_days: int = 3):
+async def generate_prompt(target_symbol: str, date: str, duration: str = "1D", history: int = 3):
     session = SessionLocal()
     prompt = []
+    model_map = get_indicator_model_map(duration)
+    is_hourly = duration == "1H"
+    dt_obj = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M") if is_hourly else datetime.datetime.strptime(date, "%Y-%m-%d")
+
+    news=get_latest_news_titles_and_summaries()
 
     try:
-        parsed_date = datetime.datetime.strptime(date, "%Y-%m-%d").date()
-
         prompt.append(
-            f"You are a professional financial market analyst specializing in GLD (SPDR Gold Shares ETF), not gold futures or spot gold.\n"
-            f"The following is {duration} candle-based indicator data for the past {history_days} days up to {parsed_date} for GLD and correlated macro assets.\n\n"
+            f"You are a professional financial market analyst specializing in {target_symbol} (SPDR Gold Shares ETF), not gold futures or spot gold.\n"
+            f"The following is {duration} candle-based indicator data for the past {history} days up to {date} for {target_symbol} and correlated macro assets.\n\n"
             "If you mention any technical indicator, use its entire name. "
-            "Please do NOT mention indicators like RSI, MACD, or Bollinger Bands without linking them to specific price levels.\n"
+            "If you mention any symbols, use their full names (e.g., 'SPDR Gold Shares ETF' for GLD).\n"
+            "Please mention indicators like RSI, MACD, or Bollinger Bands always linking them to specific price levels.\n"
             "Always express confirmation/invalidation as actual price triggers (e.g., 'MACD bullish crossover confirmed if price > $308.40').\n"
-            "I don't have a chart — I rely entirely on precise numbers and the technical indicators.\n"
-            "Your task is to analyze the data and return:\n"
-            "1. Directional bias (bullish, bearish, neutral)\n"
-            "2. Key technical drivers\n"
-            "3. Macro confirmations or conflicts\n"
-            "4. Risk or volatility warnings\n"
-            "5. Short-term outlook (7–14 days)\n"
-            "6. Entry price\n"
-            "7. Target price\n"
-            "8. Stop-loss level\n"
-            "9. Confidence level (low, medium, high)\n"
-            "10. Confidence score (0–100)\n"
-            "11. Confirmation trigger\n"
-            "12. Invalidation level\n"
-            "13. Simple action signal: buy, sell, or hold\n\n"
+            "I don't have a chart neither technical indicators graph — I rely entirely on precise numbers and the technical indicators, including their and time frames.\n"
+            "Your task is to analyze the data:\n"
             "**Return ONLY valid JSON. No markdown, no explanation. Structure it exactly like this:**\n"
+            f"For your analysis, must consider the effect of these news articles (on top of the technical) to the {target_symbol}: {news}"
             "{\n"
             "  \"directional_bias\": \"bullish | bearish | neutral — and why\",\n"
-            "  \"key_drivers\": \"top indicators or price signals\",\n"
-            "  \"macro_alignment\": \"supportive | conflicting | mixed — and why\",\n"
-            "  \"risk_signals\": \"any red flags (e.g. volatility, overbought RSI)\",\n"
+            "  \"key_drivers\": \"top indicators or price signals, with details explaining their significance\",\n"
+            "  \"macro_alignment\": \"supportive | conflicting | mixed — must include with details explaining why it is so\",\n"
+            "  \"risk_signals\": \"any red flags (e.g. volatility, overbought RSI) with details explaining why it is so\",\n"
             "  \"short_term_outlook\": \"expected price action or range over 7–14 days\",\n"
-            "  \"entry_price\": \"recommended entry point (GLD level)\",\n"
-            "  \"target_price\": \"expected price target within 1–2 weeks\",\n"
+            "  \"entry_price\": \"recommended entry point {target_symbol} level for today or tomorrow if any)\",\n"
+            "  \"target_price\": \"expected price target within for today or tomorrow if any\",\n"
             "  \"stop_loss\": \"price level to exit if trade fails\",\n"
             "  \"confidence_level\": \"low | medium | high\",\n"
             "  \"confidence_score\": number between 0 and 100,\n"
-            "  \"confirmation_trigger\": \"signal that validates the trade setup\",\n"
-            "  \"invalidation_level\": \"signal or price level that invalidates setup\",\n"
-            "  \"buy/sell/hold\": \"buy | sell | hold\"\n"
+            "  \"confirmation_trigger\": \"signal that validates the trade setup within 1-2 days or longer period, explain in details with price level and the exact time frame estimation\",\n"
+            "  \"invalidation_level\": \"signal or price level that invalidates setup within 1-2 days or longer period, explain in details with price level and the exact time frame estimation\",\n"
+            "  \"buy/sell/hold\": \"buy | sell | hold\",\n"
+            "  \"summary\": \"a concise summary of your analysis about the price trend, level etc, in simple language without the technical analysis, indicators, or news articles\"\n"
+            "  \"detail_summary\": \"a concise detail summary of your analysis in with more technical information and news articles.\"\n"
             "}\n\n"
-            "Return only valid JSON. Do not include any commentary, heading, explanation, or markdown."
         )
 
-        target_model = indicator_model_map[target_symbol]
-        hist_data = fetch_historical_indicators(session, target_model, parsed_date, history_days)
-        prompt.append(await format_section(target_symbol, hist_data))
+        target_model = model_map[target_symbol]
+        target_data = fetch_historical_indicators(session, target_model, dt_obj, history, duration)
+        prompt.append(await format_section(target_symbol, target_data))
 
         for symbol in correlated_symbols:
-            model = indicator_model_map[symbol]
-            hist_data = fetch_historical_indicators(session, model, parsed_date, history_days)
-            prompt.append(await format_section(symbol, hist_data))
+            model = model_map[symbol]
+            symbol_data = fetch_historical_indicators(session, model, dt_obj, history, duration)
+            prompt.append(await format_section(symbol, symbol_data))
 
         full_prompt = "\n\n".join(prompt)
-        answer = await get_gold_analysis_from_deepseek(full_prompt)
-        saveAnalysis(response=answer, symbol=target_symbol, date=parsed_date, db=session)
+        ai_response = await get_gold_analysis_from_deepseek(full_prompt)
 
-        print(json.dumps(answer.model_dump(), indent=2))
+        save_analysis(
+            response=ai_response,
+            symbol=target_symbol,
+            dt=dt_obj,
+            db=session,
+            duration=duration
+        )
 
     finally:
         session.close()
@@ -157,61 +166,58 @@ async def get_gold_analysis_from_deepseek(prompt: str) -> AiResponse:
             temperature=1.5,
             stream=False
         )
-        raw_output = response.choices[0].message.content
-        print("🔍 Raw output from DeepSeek:\n", raw_output)
+        raw = response.choices[0].message.content
+        print("🔍 Raw output from DeepSeek:\n", raw)
 
-        parsed_output = json.loads(raw_output)
+        parsed = json.loads(raw)
 
         required_keys = [
             "directional_bias", "key_drivers", "macro_alignment", "risk_signals",
             "short_term_outlook", "entry_price", "target_price", "stop_loss",
             "confidence_level", "confidence_score", "confirmation_trigger",
-            "invalidation_level", "buy/sell/hold"
+            "invalidation_level", "buy/sell/hold", "summary", "detail_summary"
         ]
-
-        missing = [key for key in required_keys if key not in parsed_output]
+        missing = [k for k in required_keys if k not in parsed]
         if missing:
             raise ValueError(f"Missing keys in DeepSeek response: {missing}")
 
-        price_fields = ["entry_price", "target_price", "stop_loss"]
-        for field in price_fields:
-            val = parsed_output[field]
-            if not re.search(r"\d", str(val)):
-                raise ValueError(f"Field '{field}' must contain numeric value, got: {val}")
-
-        def parse_price(value: Any, field_name: str) -> float:
-            if isinstance(value, (int, float)):
-                return float(value)
-            if isinstance(value, str):
-                cleaned = re.sub(r"[^0-9.]", "", value)
+        def parse_price(val: Any, field: str) -> float:
+            if isinstance(val, (int, float)):
+                return float(val)
+            if isinstance(val, str):
+                cleaned = re.sub(r"[^\d.]", "", val)
                 if not cleaned:
-                    raise ValueError(f"Field '{field_name}' contains non-numeric value: '{value}'")
+                    raise ValueError(f"Invalid price in {field}: {val}")
                 return float(cleaned)
-            raise ValueError(f"Field '{field_name}' has unsupported type: {type(value)}")
+            raise TypeError(f"Invalid type for {field}: {type(val)}")
 
         return AiResponse(
-            directional_bias=parsed_output["directional_bias"],
-            key_drivers=parsed_output["key_drivers"],
-            macro_alignment=parsed_output["macro_alignment"],
-            risk_signals=parsed_output["risk_signals"],
-            short_term_outlook=parsed_output["short_term_outlook"],
-            entry_price=parse_price(parsed_output["entry_price"], "entry_price"),
-            target_price=parse_price(parsed_output["target_price"], "target_price"),
-            stop_loss=parse_price(parsed_output["stop_loss"], "stop_loss"),
-            confidence_level=parsed_output["confidence_level"],
-            confidence_score=int(parsed_output["confidence_score"]),
-            confirmation_trigger=parsed_output["confirmation_trigger"],
-            invalidation_level=parsed_output["invalidation_level"],
-            trade_signal=parsed_output["buy/sell/hold"]
+            directional_bias=parsed["directional_bias"],
+            key_drivers=parsed["key_drivers"],
+            macro_alignment=parsed["macro_alignment"],
+            risk_signals=parsed["risk_signals"],
+            short_term_outlook=parsed["short_term_outlook"],
+            entry_price=parse_price(parsed["entry_price"], "entry_price"),
+            target_price=parse_price(parsed["target_price"], "target_price"),
+            stop_loss=parse_price(parsed["stop_loss"], "stop_loss"),
+            confidence_level=parsed["confidence_level"],
+            confidence_score=int(parsed["confidence_score"]),
+            confirmation_trigger=parsed["confirmation_trigger"],
+            invalidation_level=parsed["invalidation_level"],
+            trade_signal=parsed["buy/sell/hold"],
+            summary=parsed["summary"],
+            detail_summary=parsed["detail_summary"]
         )
 
     except Exception as e:
-        print("❌ DeepSeek API call or JSON parsing failed.")
-        raise RuntimeError(f"DeepSeek response error: {e}")
+        raise RuntimeError(f"❌ DeepSeek response error: {e}")
 
-def saveAnalysis(response: AiResponse, symbol: str, date: Date, db: Session):
-    analysis = AiAnalysis(
-        date=date,
+def save_analysis(response: AiResponse, symbol: str, dt: datetime.datetime, db: Session, duration: str):
+    model = AiAnalysis1H if duration == "1H" else AiAnalysis1D
+    insert_time = dt.replace(minute=0, second=0, microsecond=0) if duration == "1H" else dt.date()
+
+    stmt = insert(model).values(
+        date=insert_time,
         symbol=symbol,
         directional_bias=response.directional_bias,
         key_drivers=response.key_drivers,
@@ -225,12 +231,34 @@ def saveAnalysis(response: AiResponse, symbol: str, date: Date, db: Session):
         confidence_score=response.confidence_score,
         confirmation_trigger=response.confirmation_trigger,
         invalidation_level=response.invalidation_level,
-        trade_signal=response.trade_signal
+        trade_signal=response.trade_signal,
+        summary=response.summary,
+        detail_summary=response.detail_summary
+    ).on_conflict_do_update(
+        index_elements=["date", "symbol"],
+        set_={ 
+            "directional_bias": response.directional_bias,
+            "key_drivers": response.key_drivers,
+            "macro_alignment": response.macro_alignment,
+            "risk_signals": response.risk_signals,
+            "short_term_outlook": response.short_term_outlook,
+            "entry_price": response.entry_price,
+            "target_price": response.target_price,
+            "stop_loss": response.stop_loss,
+            "confidence_level": response.confidence_level,
+            "confidence_score": response.confidence_score,
+            "confirmation_trigger": response.confirmation_trigger,
+            "invalidation_level": response.invalidation_level,
+            "trade_signal": response.trade_signal,
+            "summary": response.summary,
+            "detail_summary": response.detail_summary
+        }
     )
-    db.add(analysis)
+    db.execute(stmt)
     db.commit()
-    db.refresh(analysis)
-    return analysis
 
 if __name__ == "__main__":
-    asyncio.run(generate_prompt(target_symbol="GLD", date="2025-07-07", duration="1D", history_days=7))
+    # Example: for hourly
+    # asyncio.run(generate_prompt("GLD", "2025-07-19 09:00", "1H", 3))
+    # Example: for daily
+    asyncio.run(generate_prompt("GLD", "2025-07-19", "1D", 14))

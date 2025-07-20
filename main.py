@@ -6,6 +6,7 @@ from user import models_user
 from indicators import models_features
 from yfinance import models_external_symbols
 from ai import models_ai
+from news import models_news
 from user.router_user import router as user_router
 from apple.router_apple import router as apple_router
 
