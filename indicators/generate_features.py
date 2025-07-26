@@ -1,5 +1,8 @@
 import pandas as pd
 from sqlalchemy.orm import Session
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from db.database import SessionLocal
 from indicators.calculator import compute_indicators
 from indicators.models_features import (

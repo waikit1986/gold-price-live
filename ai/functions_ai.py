@@ -1,4 +1,3 @@
-import sys
 import os
 import re
 import json
@@ -9,7 +8,6 @@ from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy import and_
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from openai import AsyncOpenAI
 from db.database import SessionLocal
@@ -101,36 +99,45 @@ async def generate_prompt(target_symbol: str, date: str, duration: str = "1D", h
     is_hourly = duration == "1H"
     dt_obj = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M") if is_hourly else datetime.datetime.strptime(date, "%Y-%m-%d")
 
-    news=get_latest_news_titles_and_summaries()
+    news = get_latest_news_titles_and_summaries()
 
     try:
         prompt.append(
-            f"You are a professional financial market analyst specializing in {target_symbol} (SPDR Gold Shares ETF), not gold futures or spot gold.\n"
-            f"The following is {duration} candle-based indicator data for the past {history} days up to {date} for {target_symbol} and correlated macro assets.\n\n"
+            f"You are a professional financial market analyst specializing in the {target_symbol} symbol in trading.\n"
+            f"The following is {duration} candle-based indicator data for the past {history} days up to {date} which is today, for {target_symbol} and correlated macro assets.\n\n"
             "If you mention any technical indicator, use its entire name. "
             "If you mention any symbols, use their full names (e.g., 'SPDR Gold Shares ETF' for GLD).\n"
             "Please mention indicators like RSI, MACD, or Bollinger Bands always linking them to specific price levels.\n"
             "Always express confirmation/invalidation as actual price triggers (e.g., 'MACD bullish crossover confirmed if price > $308.40').\n"
-            "I don't have a chart neither technical indicators graph — I rely entirely on precise numbers and the technical indicators, including their and time frames.\n"
+            "I don't have a chart or technical indicator graph — I rely entirely on precise numbers and indicator values, including their time frames.\n"
+            f"For your analysis, you must consider the effect of these news articles (on top of the technical indicators) to the {target_symbol}: {news}\n\n"
             "Your task is to analyze the data:\n"
             "**Return ONLY valid JSON. No markdown, no explanation. Structure it exactly like this:**\n"
-            f"For your analysis, must consider the effect of these news articles (on top of the technical) to the {target_symbol}: {news}"
             "{\n"
-            "  \"directional_bias\": \"bullish | bearish | neutral — and why\",\n"
-            "  \"key_drivers\": \"top indicators or price signals, with details explaining their significance\",\n"
-            "  \"macro_alignment\": \"supportive | conflicting | mixed — must include with details explaining why it is so\",\n"
-            "  \"risk_signals\": \"any red flags (e.g. volatility, overbought RSI) with details explaining why it is so\",\n"
-            "  \"short_term_outlook\": \"expected price action or range over 7–14 days\",\n"
-            "  \"entry_price\": \"recommended entry point {target_symbol} level for today or tomorrow if any)\",\n"
-            "  \"target_price\": \"expected price target within for today or tomorrow if any\",\n"
-            "  \"stop_loss\": \"price level to exit if trade fails\",\n"
-            "  \"confidence_level\": \"low | medium | high\",\n"
-            "  \"confidence_score\": number between 0 and 100,\n"
-            "  \"confirmation_trigger\": \"signal that validates the trade setup within 1-2 days or longer period, explain in details with price level and the exact time frame estimation\",\n"
-            "  \"invalidation_level\": \"signal or price level that invalidates setup within 1-2 days or longer period, explain in details with price level and the exact time frame estimation\",\n"
-            "  \"buy/sell/hold\": \"buy | sell | hold\",\n"
-            "  \"summary\": \"a concise summary of your analysis about the price trend, level etc, in simple language without the technical analysis, indicators, or news articles\"\n"
-            "  \"detail_summary\": \"a concise detail summary of your analysis in with more technical information and news articles.\"\n"
+            "  \"directional_bias\": \"...\",\n"
+            "  \"key_drivers\": \"...\",\n"
+            "  \"macro_alignment\": \"...\",\n"
+            "  \"risk_signals\": \"...\",\n"
+            "  \"today_outlook\": \"...\",\n"
+            "  \"today_entry_price\": \"...\",\n"
+            "  \"today_target_price\": \"...\",\n"
+            "  \"today_stop_loss\": \"...\",\n"
+            "  \"today_confidence_level\": \"...\",\n"
+            "  \"today_confidence_score\": ...,\n"
+            "  \"today_confirmation_trigger\": \"...\",\n"
+            "  \"today_invalidation_level\": \"...\",\n"
+            "  \"today_trade_signal\": \"...\",\n"
+            "  \"short_term_outlook\": \"...\",\n"
+            "  \"short_term_entry_price\": \"...\",\n"
+            "  \"short_term_target_price\": \"...\",\n"
+            "  \"short_term_stop_loss\": \"...\",\n"
+            "  \"short_term_confidence_level\": \"...\",\n"
+            "  \"short_term_confidence_score\": ...,\n"
+            "  \"short_term_confirmation_trigger\": \"...\",\n"
+            "  \"short_term_invalidation_level\": \"...\",\n"
+            "  \"short_term_trade_signal\": \"...\",\n"
+            "  \"summary\": \"...\",\n"
+            "  \"detail_summary\": \"...\"\n"
             "}\n\n"
         )
 
@@ -173,9 +180,13 @@ async def get_gold_analysis_from_deepseek(prompt: str) -> AiResponse:
 
         required_keys = [
             "directional_bias", "key_drivers", "macro_alignment", "risk_signals",
-            "short_term_outlook", "entry_price", "target_price", "stop_loss",
-            "confidence_level", "confidence_score", "confirmation_trigger",
-            "invalidation_level", "buy/sell/hold", "summary", "detail_summary"
+            "today_outlook", "today_entry_price", "today_target_price", "today_stop_loss",
+            "today_confidence_level", "today_confidence_score", "today_confirmation_trigger",
+            "today_invalidation_level", "today_trade_signal",
+            "short_term_outlook", "short_term_entry_price", "short_term_target_price", "short_term_stop_loss",
+            "short_term_confidence_level", "short_term_confidence_score", "short_term_confirmation_trigger",
+            "short_term_invalidation_level", "short_term_trade_signal",
+            "summary", "detail_summary"
         ]
         missing = [k for k in required_keys if k not in parsed]
         if missing:
@@ -196,15 +207,27 @@ async def get_gold_analysis_from_deepseek(prompt: str) -> AiResponse:
             key_drivers=parsed["key_drivers"],
             macro_alignment=parsed["macro_alignment"],
             risk_signals=parsed["risk_signals"],
+
+            today_outlook=parsed["today_outlook"],
+            today_entry_price=parse_price(parsed["today_entry_price"], "today_entry_price"),
+            today_target_price=parse_price(parsed["today_target_price"], "today_target_price"),
+            today_stop_loss=parse_price(parsed["today_stop_loss"], "today_stop_loss"),
+            today_confidence_level=parsed["today_confidence_level"],
+            today_confidence_score=int(parsed["today_confidence_score"]),
+            today_confirmation_trigger=parsed["today_confirmation_trigger"],
+            today_invalidation_level=parsed["today_invalidation_level"],
+            today_trade_signal=parsed["today_trade_signal"],
+
             short_term_outlook=parsed["short_term_outlook"],
-            entry_price=parse_price(parsed["entry_price"], "entry_price"),
-            target_price=parse_price(parsed["target_price"], "target_price"),
-            stop_loss=parse_price(parsed["stop_loss"], "stop_loss"),
-            confidence_level=parsed["confidence_level"],
-            confidence_score=int(parsed["confidence_score"]),
-            confirmation_trigger=parsed["confirmation_trigger"],
-            invalidation_level=parsed["invalidation_level"],
-            trade_signal=parsed["buy/sell/hold"],
+            short_term_entry_price=parse_price(parsed["short_term_entry_price"], "short_term_entry_price"),
+            short_term_target_price=parse_price(parsed["short_term_target_price"], "short_term_target_price"),
+            short_term_stop_loss=parse_price(parsed["short_term_stop_loss"], "short_term_stop_loss"),
+            short_term_confidence_level=parsed["short_term_confidence_level"],
+            short_term_confidence_score=int(parsed["short_term_confidence_score"]),
+            short_term_confirmation_trigger=parsed["short_term_confirmation_trigger"],
+            short_term_invalidation_level=parsed["short_term_invalidation_level"],
+            short_term_trade_signal=parsed["short_term_trade_signal"],
+
             summary=parsed["summary"],
             detail_summary=parsed["detail_summary"]
         )
@@ -223,33 +246,57 @@ def save_analysis(response: AiResponse, symbol: str, dt: datetime.datetime, db: 
         key_drivers=response.key_drivers,
         macro_alignment=response.macro_alignment,
         risk_signals=response.risk_signals,
+
+        today_outlook=response.today_outlook,
+        today_entry_price=response.today_entry_price,
+        today_target_price=response.today_target_price,
+        today_stop_loss=response.today_stop_loss,
+        today_confidence_level=response.today_confidence_level,
+        today_confidence_score=response.today_confidence_score,
+        today_confirmation_trigger=response.today_confirmation_trigger,
+        today_invalidation_level=response.today_invalidation_level,
+        today_trade_signal=response.today_trade_signal,
+
         short_term_outlook=response.short_term_outlook,
-        entry_price=response.entry_price,
-        target_price=response.target_price,
-        stop_loss=response.stop_loss,
-        confidence_level=response.confidence_level,
-        confidence_score=response.confidence_score,
-        confirmation_trigger=response.confirmation_trigger,
-        invalidation_level=response.invalidation_level,
-        trade_signal=response.trade_signal,
+        short_term_entry_price=response.short_term_entry_price,
+        short_term_target_price=response.short_term_target_price,
+        short_term_stop_loss=response.short_term_stop_loss,
+        short_term_confidence_level=response.short_term_confidence_level,
+        short_term_confidence_score=response.short_term_confidence_score,
+        short_term_confirmation_trigger=response.short_term_confirmation_trigger,
+        short_term_invalidation_level=response.short_term_invalidation_level,
+        short_term_trade_signal=response.short_term_trade_signal,
+
         summary=response.summary,
         detail_summary=response.detail_summary
     ).on_conflict_do_update(
         index_elements=["date", "symbol"],
-        set_={ 
+        set_={
             "directional_bias": response.directional_bias,
             "key_drivers": response.key_drivers,
             "macro_alignment": response.macro_alignment,
             "risk_signals": response.risk_signals,
+
+            "today_outlook": response.today_outlook,
+            "today_entry_price": response.today_entry_price,
+            "today_target_price": response.today_target_price,
+            "today_stop_loss": response.today_stop_loss,
+            "today_confidence_level": response.today_confidence_level,
+            "today_confidence_score": response.today_confidence_score,
+            "today_confirmation_trigger": response.today_confirmation_trigger,
+            "today_invalidation_level": response.today_invalidation_level,
+            "today_trade_signal": response.today_trade_signal,
+
             "short_term_outlook": response.short_term_outlook,
-            "entry_price": response.entry_price,
-            "target_price": response.target_price,
-            "stop_loss": response.stop_loss,
-            "confidence_level": response.confidence_level,
-            "confidence_score": response.confidence_score,
-            "confirmation_trigger": response.confirmation_trigger,
-            "invalidation_level": response.invalidation_level,
-            "trade_signal": response.trade_signal,
+            "short_term_entry_price": response.short_term_entry_price,
+            "short_term_target_price": response.short_term_target_price,
+            "short_term_stop_loss": response.short_term_stop_loss,
+            "short_term_confidence_level": response.short_term_confidence_level,
+            "short_term_confidence_score": response.short_term_confidence_score,
+            "short_term_confirmation_trigger": response.short_term_confirmation_trigger,
+            "short_term_invalidation_level": response.short_term_invalidation_level,
+            "short_term_trade_signal": response.short_term_trade_signal,
+
             "summary": response.summary,
             "detail_summary": response.detail_summary
         }
@@ -257,8 +304,7 @@ def save_analysis(response: AiResponse, symbol: str, dt: datetime.datetime, db: 
     db.execute(stmt)
     db.commit()
 
-if __name__ == "__main__":
-    # Example: for hourly
-    # asyncio.run(generate_prompt("GLD", "2025-07-19 09:00", "1H", 3))
-    # Example: for daily
-    asyncio.run(generate_prompt("GLD", "2025-07-19", "1D", 14))
+# Example: for hourly
+# asyncio.run(generate_prompt("GLD", "2025-07-19 09:00", "1H", 3))
+# Example: for daily
+asyncio.run(generate_prompt("GLD", "2025-07-26", "1D", 14))

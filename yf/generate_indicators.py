@@ -1,16 +1,12 @@
-import sys
-import os
 import traceback
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 import pandas as pd
 from sqlalchemy.orm import Session
+
 from db.database import SessionLocal
 from indicators.calculator import compute_indicators
 
 # database models
-from models_external_symbols import (
+from .models_external_symbols import (
     GLD, GCF, IAU, SIF, PPLT, PALL,
     DXY, TNX, TIP, CLF, VIX, GSPC
 )
@@ -89,7 +85,6 @@ def fetch_price_data(session: Session, table_model, timeframe: str) -> pd.DataFr
 
     return df_resampled
 
-
 def generate_features_for_symbol(symbol: str, price_model, indicator_model, timeframe: str = "1D"):
     """Generate technical indicator features and insert into DB."""
     session = SessionLocal()
@@ -134,7 +129,6 @@ def generate_features_for_symbol(symbol: str, price_model, indicator_model, time
     finally:
         session.close()
 
-
 def generate_all_macro_features(timeframe: str = "1D"):
     """Generate features for all mapped macro symbols."""
     for symbol in price_table_map:
@@ -146,6 +140,4 @@ def generate_all_macro_features(timeframe: str = "1D"):
             timeframe=timeframe
         )
 
-
-if __name__ == "__main__":
-    generate_all_macro_features()
+generate_all_macro_features()
